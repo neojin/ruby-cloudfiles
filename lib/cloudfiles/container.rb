@@ -234,6 +234,24 @@ module CloudFiles
     end
     alias :list_objects :objects
 
+    # objects as a tree
+    def object_tree(params = {})
+      params[:marker] ||= params[:offset] unless params[:offset].nil?
+      query = []
+      params.each do |param, value|
+        if [:limit, :marker, :prefix, :path, :delimiter].include? param
+          query << "#{param}=#{CloudFiles.escape(value.to_s)}"
+        end
+      end
+      begin
+        response = SwiftClient.get_container(self.connection.storageurl, self.connection.authtoken, escaped_name, params[:marker], params[:limit], params[:prefix], params[:delimiter])
+        puts response.inspect
+        return response[1].collect{|o| o['name']}
+      rescue ClientException => e
+        raise CloudFiles::Exception::InvalidResponse, "Invalid response code #{e.status}" unless (e.status.to_s == "200")
+      end
+    end
+
     # Retrieves a list of all objects in the current container along with their size in bytes, hash, and content_type.
     # If no objects exist, an empty hash is returned.  Throws an InvalidResponseException if the request fails.  Takes a
     # parameter hash as an argument, in the same form as the objects method.
